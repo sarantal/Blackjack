@@ -1,4 +1,4 @@
-import gi
+import gi, time, random
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
@@ -6,14 +6,24 @@ from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 
 
+"""
+TODO:
+    kaikki mikä tapahtuu 'stay' klikin jälkeen
+    viive aloituskorttien välille, time.sleep ei toimi, animaatio? revealer?
+    määrätyt paikat korteille, ei näytä hyvältä nyt kun paikka skaalautuu korttien määrän mukaan
+"""
+
+
+
 class MyWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title="Blackjack")
-        self.set_default_size(600,400)
+        self.set_default_size(700,500)
         
-        # Grid to contain boxes
-        grid = Gtk.Grid()
-        self.add(grid)
+        # Vertical box to contain other boxes
+        self.box = Gtk.Box()
+        self.box.set_orientation(1)
+        self.add(self.box)
         
         # Box for dealers cards
         self.box_dealer = Gtk.Box(spacing = 20)
@@ -21,94 +31,214 @@ class MyWindow(Gtk.Window):
         self.box_dealer.set_margin_start(30)
         self.box_dealer.set_margin_end(30)
         self.box_dealer.set_margin_top(20)
-        
-        # Box for players cards
-        
+        self.box_dealer.set_size_request(600, 150)
         
         # Label for text
+        self.label = Gtk.Label()
+        self.label.set_text("This is a left-justified label.\nWith multiple lines.")        
         
+        # Box for players cards
+        self.box_player = Gtk.Box(spacing = 20)
+        self.box_player.set_orientation(0)
+        self.box_player.set_margin_start(30)
+        self.box_player.set_margin_end(30)
+        self.box_player.set_margin_top(20)        
+        self.box_player.set_size_request(600, 150)
+
         
-        #   Buttons
-        # Deal button
-        button_deal = Gtk.Button(label="Deal cards")
-        button_deal.connect("clicked", self.deal_button_clicked)
+        #   BUTTONS
+        # Play button
+        self.button_play = Gtk.Button(label="Play")
+        self.button_play.connect("clicked", self.play_button_clicked)
         
         # Hit button
-        button_hit = Gtk.Button(label="Hit")
-        button_hit.connect("clicked", self.hit_button_clicked)
+        self.button_hit = Gtk.Button(label="Hit")
+        self.button_hit.connect("clicked", self.hit_button_clicked)
+        self.button_hit.set_sensitive(False)        
 
         # Stay button
-        button_stay = Gtk.Button(label="Stay")
-        button_stay.connect("clicked", self.stay_button_clicked)
+        self.button_stay = Gtk.Button(label="Stay")
+        self.button_stay.connect("clicked", self.stay_button_clicked)
+        self.button_stay.set_sensitive(False)
 
         # Quit button
-        button_quit = Gtk.Button(label="Quit")
-        button_quit.connect("clicked", self.quit_button_clicked)            
+        self.button_quit = Gtk.Button(label="Quit")
+        self.button_quit.connect("clicked", self.quit_button_clicked)            
         
         # Box for buttons
         self.box_buttons = Gtk.Box(spacing = 30)
-        self.box_buttons.pack_start(button_deal, True, True, 0)
-        self.box_buttons.pack_start(button_hit, True, True, 0)
-        self.box_buttons.pack_start(button_stay, True, True, 0)
-        self.box_buttons.pack_start(button_quit, True, True, 0)
+        self.box_buttons.set_margin_start(20)
+        self.box_buttons.set_margin_end(20)
+        self.box_buttons.set_margin_bottom(10)
+        self.box_buttons.set_margin_top(20)
+        self.box_buttons.pack_start(self.button_play, True, True, 0)
+        self.box_buttons.pack_start(self.button_hit, True, True, 0)
+        self.box_buttons.pack_start(self.button_stay, True, True, 0)
+        self.box_buttons.pack_start(self.button_quit, True, True, 0)
         
         
+        #   CARDS
+        self.all_cards = Gtk.Image()
+        self.all_cards = GdkPixbuf.Pixbuf.new_from_file("deck.png")        # Pixbuf object
+        
+        
+        # Put boxes in main box
+        self.box.pack_start(self.box_dealer, True, True, 0)
+        self.box.pack_start(self.label, True, True, 0)
+        self.box.pack_start(self.box_player, True, True, 0)
+        self.box.pack_start(self.box_buttons, True, True, 0)
+        
+        
+    def setup(self):
+        self.dealer_values = []
+        self.player_values = []
+        self.dealer_sum = 0
+        self.player_sum = 0
+        self.deck = [ "s1","s2","s3","s4","s5","s6","s7","s8","s9","s10","s11","s12","s13",
+                         "h1","h2","h3","h4","h5","h6","h7","h8","h9","h10","h11","h12","h13",
+                         "d1","d2","d3","d4","d5","d6","d7","d8","d9","d10","d11","d12","d13",
+                         "c1","c2","c3","c4","c5","c6","c7","c8","c9","c10","c11","c12","c13" ]
+        random.seed()        
+        
+        # destroy previous card widgets
+        for card in self.box_dealer:
+            card.destroy()
+        for card in self.box_player:
+            card.destroy()
+        
+        
+    def deal_card(self, receiver, facing):
+    
+        card = Gtk.Image()
+        
+        card_str = random.choice(self.deck)
+        if card_str[0] == "s":
+            suite = 1
+        elif card_str[0] == "h":
+            suite = 2
+        elif card_str[0] == "d":
+            suite = 3
+        elif card_str[0] == "c":
+            suite = 4
+        cardvalue = int(card_str[1:])
+        self.deck.remove(card_str)
+        
+        # Face down card
+        if facing == "down":
+            pixbuf = self.all_cards.new_subpixbuf(4*98, 4*144, 98, 144)
+            card.set_from_pixbuf(pixbuf)        
+            card.set_size_request(98, 144)
+            self.box_dealer.pack_start(card, True, True, 0)
+            self.box_dealer.show_all()             
+        
+        # Face up cards
+        else:
+            pixbuf = self.all_cards.new_subpixbuf((cardvalue-1)*98, (suite-1)*144, 98, 144)
+            card.set_from_pixbuf(pixbuf)        
+            card.set_size_request(98, 144)
+            #card.set_transition_type(OVER_LEFT)
+            if receiver == "dealer":
+                self.box_dealer.pack_start(card, True, True, 0)
+                self.box_dealer.show_all()                
+            else:
+                self.box_player.pack_start(card, True, True, 0)
+                self.box_player.show_all()        
+        
+        
+        if cardvalue >= 10:
+            cardvalue = 10
+        elif cardvalue == 1:
+            cardvalue = 11
+        
+        if receiver == "dealer":
+            self.dealer_values.append(cardvalue)
+            self.dealer_sum = sum(self.dealer_values)
+            if self.dealer_sum == 21:
+                self.label.set_text("Dealer got blackjack! You lose!")
+                self.button_play.set_sensitive(True)
+                self.button_hit.set_sensitive(False)
+                self.button_stay.set_sensitive(False)  
+            elif self.dealer_sum > 21:
+                if 11 in self.dealer_values:
+                    self.dealer_values.remove(11)
+                    self.dealer_values.append(1)
+                    self.dealer_sum = sum(self.dealer_values)
+                else:
+                    self.label.set_text("Dealer goes bust! You win!")
+                    self.button_play.set_sensitive(True)
+                    self.button_hit.set_sensitive(False)
+                    self.button_stay.set_sensitive(False)                
 
-        # Pixbuf for all cards  (card size: w=72, h=96)
-        all_cards = Gtk.Image()
-        #all_cards.new_from_file("cards.png")                       # Image object
-        all_cards = GdkPixbuf.Pixbuf.new_from_file("cards.png")     # Pixbuf object
-
-  
-        # Dealers cards
-        dealer_card1 = Gtk.Image()
-        #cardvalue = 7
-        #suite = 2              (cardvalue-1)*72, (suite-1)*96
-        pixbuf = GdkPixbuf.Pixbuf(width=72, height=96)
-        print(pixbuf.get_width())   # =1 ??
-        print(pixbuf.get_height())  # =1 ??
-        #all_cards.copy_area(0, 0, 72, 96, pixbuf, 0, 0)
-        """
-        GdkPixbuf-CRITICAL **: 17:21:43.779: gdk_pixbuf_copy_area: assertion 'dest_x >= 0 && dest_x + width <= dest_pixbuf->width' failed
-        """
-        #pixbuf = all_cards.subpixbuf(0, 0, 72, 96)      # ...object has no attribute 'subpixbuf'
-        dealer_card1.set_from_pixbuf(pixbuf)
+        else:
+            self.player_values.append(cardvalue)
+            self.player_sum = sum(self.player_values)  
+            if self.player_sum == 21:
+                self.label.set_text("BLACKJACK! You win!")
+                self.button_play.set_sensitive(True)
+                self.button_hit.set_sensitive(False)
+                self.button_stay.set_sensitive(False)                
+            elif self.player_sum > 21:
+                if 11 in self.player_values:
+                    self.player_values.remove(11)
+                    self.player_values.append(1)
+                    self.player_sum = sum(self.player_values)
+                    self.label.set_text("Player: " + str(self.player_sum))
+                else:
+                    self.label.set_text(str(self.player_sum) + " Bust! You lose!")
+                    self.button_play.set_sensitive(True)
+                    self.button_hit.set_sensitive(False)
+                    self.button_stay.set_sensitive(False)
+            else:
+                self.label.set_text("Player: " + str(self.player_sum))
+            
+        # debugging
+        print("Dealer has: " +str(self.dealer_sum))
+        print("Player has: " +str(self.player_sum))
         
-        #dealer_card1 = Gtk.Button(label="Card 1")      # testing with buttons
-        dealer_card2 = Gtk.Button(label="Card 2")
-        # TODO: max 6 cards?
-        dealer_card1.set_size_request(72, 96)
-        dealer_card2.set_size_request(72, 96)
-        self.box_dealer.pack_start(dealer_card1, True, True, 0)
-        self.box_dealer.pack_start(dealer_card2, True, True, 0)
-        
-        
-        
-        # Players cards
+        #self.label.set_text("Dealer: " +str(dealer_sum) +"   Player: " +str(player_sum))
+            
 
         
+        
+    def play_button_clicked(self, widget):
 
-        # Put boxes in grid
-        #   could also be vertical box containing other boxes?
-        grid.add(self.box_dealer)
-        grid.attach_next_to(self.box_buttons, self.box_dealer, Gtk.PositionType.BOTTOM, 1, 1)
+        self.button_play.set_sensitive(False)
+        self.setup()
         
-        
-    def deal_button_clicked(self, widget):
-        print("Lets deal cards!")
         # TODO
+        #   sleep ei toimi oikein, joku animaatio?
+        #   fixatut paikat korteille?
+        
+        self.deal_card("dealer", "up")
+        #time.sleep(1)
+        self.deal_card("player", "up")
+        #time.sleep(1)
+        self.deal_card("dealer", "down")
+        #time.sleep(1)
+        self.deal_card("player", "up")        
+
+        self.button_hit.set_sensitive(True)
+        self.button_stay.set_sensitive(True)
+        
         
     def hit_button_clicked(self, widget):
         print("Get another card")
-        # TODO
+        self.deal_card("player", "up")
+        
 
     def stay_button_clicked(self, widget):
         print("Stay")
         # TODO
+        #   reveal dealers 2nd card
+        #   dealer gets card until at 17 (or ties with player?)
+        #   declare winner
+        
 
     def quit_button_clicked(self, widget):
-        print("Quit")        
-        # TODO
+        Gtk.main_quit()
+        # TODO  popup confirmation?
+        
+
 
 
         
