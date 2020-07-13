@@ -8,9 +8,12 @@ from gi.repository import GdkPixbuf
 
 """
 TODO:
-    kaikki mikä tapahtuu 'stay' klikin jälkeen
-    viive aloituskorttien välille, time.sleep ei toimi, animaatio? revealer?
+    deal_card ja reveal_card tekee samoja asioita -> joku uus funktio jossa yhteiset jutut?
+    viive korttien välille, time.sleep ei toimi, animaatio? revealer?
     määrätyt paikat korteille, ei näytä hyvältä nyt kun paikka skaalautuu korttien määrän mukaan
+        widget.halign(START) ?       (Align.START)
+        testaa boxin childin propseja
+    vihreä taustaväri, buttoneille joku väri/fontti/läpinäkyvyys?
 """
 
 
@@ -35,7 +38,6 @@ class MyWindow(Gtk.Window):
         
         # Label for text
         self.label = Gtk.Label()
-        self.label.set_text("This is a left-justified label.\nWith multiple lines.")        
         
         # Box for players cards
         self.box_player = Gtk.Box(spacing = 20)
@@ -45,7 +47,6 @@ class MyWindow(Gtk.Window):
         self.box_player.set_margin_top(20)        
         self.box_player.set_size_request(600, 150)
 
-        
         #   BUTTONS
         # Play button
         self.button_play = Gtk.Button(label="Play")
@@ -76,11 +77,9 @@ class MyWindow(Gtk.Window):
         self.box_buttons.pack_start(self.button_stay, True, True, 0)
         self.box_buttons.pack_start(self.button_quit, True, True, 0)
         
-        
         #   CARDS
         self.all_cards = Gtk.Image()
         self.all_cards = GdkPixbuf.Pixbuf.new_from_file("deck.png")        # Pixbuf object
-        
         
         # Put boxes in main box
         self.box.pack_start(self.box_dealer, True, True, 0)
@@ -108,9 +107,7 @@ class MyWindow(Gtk.Window):
         
         
     def deal_card(self, receiver, facing):
-    
         card = Gtk.Image()
-        
         card_str = random.choice(self.deck)
         if card_str[0] == "s":
             suite = 1
@@ -129,7 +126,8 @@ class MyWindow(Gtk.Window):
             card.set_from_pixbuf(pixbuf)        
             card.set_size_request(98, 144)
             self.box_dealer.pack_start(card, True, True, 0)
-            self.box_dealer.show_all()             
+            self.box_dealer.show_all()
+            self.hidden_card = card_str     # to be revealed later
         
         # Face up cards
         else:
@@ -143,7 +141,6 @@ class MyWindow(Gtk.Window):
             else:
                 self.box_player.pack_start(card, True, True, 0)
                 self.box_player.show_all()        
-        
         
         if cardvalue >= 10:
             cardvalue = 10
@@ -191,17 +188,29 @@ class MyWindow(Gtk.Window):
             else:
                 self.label.set_text("Player: " + str(self.player_sum))
             
-        # debugging
-        print("Dealer has: " +str(self.dealer_sum))
-        print("Player has: " +str(self.player_sum))
-        
-        #self.label.set_text("Dealer: " +str(dealer_sum) +"   Player: " +str(player_sum))
             
+    def reveal_card(self, card_str):
+        children = self.box_dealer.get_children()       # remove facedown image
+        children[-1].destroy()    
+        card = Gtk.Image()
+        if card_str[0] == "s":
+            suite = 1
+        elif card_str[0] == "h":
+            suite = 2
+        elif card_str[0] == "d":
+            suite = 3
+        elif card_str[0] == "c":
+            suite = 4
+        cardvalue = int(card_str[1:])  
+        pixbuf = self.all_cards.new_subpixbuf((cardvalue-1)*98, (suite-1)*144, 98, 144)
+        card.set_from_pixbuf(pixbuf)        
+        card.set_size_request(98, 144)
+        #card.set_transition_type(OVER_LEFT)
+        self.box_dealer.pack_start(card, True, True, 0)
+        self.box_dealer.show_all()   
 
-        
         
     def play_button_clicked(self, widget):
-
         self.button_play.set_sensitive(False)
         self.setup()
         
@@ -216,22 +225,33 @@ class MyWindow(Gtk.Window):
         self.deal_card("dealer", "down")
         #time.sleep(1)
         self.deal_card("player", "up")        
-
         self.button_hit.set_sensitive(True)
         self.button_stay.set_sensitive(True)
         
         
     def hit_button_clicked(self, widget):
-        print("Get another card")
         self.deal_card("player", "up")
         
 
     def stay_button_clicked(self, widget):
-        print("Stay")
-        # TODO
-        #   reveal dealers 2nd card
-        #   dealer gets card until at 17 (or ties with player?)
-        #   declare winner
+        self.reveal_card(self.hidden_card)
+        while self.dealer_sum < 17:
+            self.deal_card("dealer", "up")
+        if self.dealer_sum == self.player_sum:
+            self.label.set_text("Nobody wins")
+            self.button_play.set_sensitive(True)
+            self.button_hit.set_sensitive(False)
+            self.button_stay.set_sensitive(False)             
+        elif self.dealer_sum > self.player_sum and self.dealer_sum <= 21:
+            self.label.set_text("Dealer wins")
+            self.button_play.set_sensitive(True)
+            self.button_hit.set_sensitive(False)
+            self.button_stay.set_sensitive(False)   
+        elif self.dealer_sum < self.player_sum:
+            self.label.set_text("You win")
+            self.button_play.set_sensitive(True)
+            self.button_hit.set_sensitive(False)
+            self.button_stay.set_sensitive(False)
         
 
     def quit_button_clicked(self, widget):
@@ -240,8 +260,6 @@ class MyWindow(Gtk.Window):
         
 
 
-
-        
 win = MyWindow()
 win.connect("destroy", Gtk.main_quit)
 win.show_all()
