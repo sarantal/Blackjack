@@ -8,12 +8,13 @@ from gi.repository import GdkPixbuf
 
 """
 TODO:
-    blackjackin voi saada vain kahdella ensimmäisellä kortilla..
-        blackjack voittaa 21:n
-        
-    deal_card ja reveal_card tekee samoja asioita -> joku uus funktio jossa yhteiset jutut?
+    uudet funktiot?:
+        deal_card(player/dealer)        random.choice, kortin kuva, lisää kortin arvo listaan
+        update_score(player/dealer)     ässä: 11->1 tarvittaessa
+        reveal_card                     'stay' buttonille, julistaa blackjackin tarvittaessa
+        end_game                        voittajan julistus, buttoneiden aktivointi
     
-    viive korttien välille, time.sleep ei toimi, animaatio? revealer?
+    viive korttien välille?
 
     vihreä taustaväri, buttoneille joku väri/fontti/läpinäkyvyys?
 """
@@ -146,12 +147,20 @@ class MyWindow(Gtk.Window):
             pixbuf = self.all_cards.new_subpixbuf((cardvalue-1)*98, (suite-1)*144, 98, 144)
             card.set_from_pixbuf(pixbuf)        
             card.set_size_request(98, 144)
+            self.card_revealer = Gtk.Revealer()
+            self.card_revealer.add(card)
+            self.card_revealer.props.transition_duration = 750
+            self.card_revealer.set_transition_type(Gtk.RevealerTransitionType.CROSSFADE)            
+            
             if receiver == "dealer":
-                self.box_dealer.pack_start(card, False, True, 0)
+                self.box_dealer.pack_start(self.card_revealer, False, True, 0)
                 self.box_dealer.show_all()                
             else:
-                self.box_player.pack_start(card, False, True, 0)
-                self.box_player.show_all()        
+                self.box_player.pack_start(self.card_revealer, False, True, 0)
+                self.box_player.show_all() 
+                
+            self.card_revealer.show()
+            self.card_revealer.set_reveal_child(True)
         
         if cardvalue >= 10:
             cardvalue = 10
@@ -161,8 +170,11 @@ class MyWindow(Gtk.Window):
         if receiver == "dealer":
             self.dealer_values.append(cardvalue)
             self.dealer_sum = sum(self.dealer_values)
-            if self.dealer_sum == 21:
-                self.label.set_text("Dealer got blackjack! You lose!")      # not always
+            if self.dealer_sum == 21 and len(self.dealer_values) == 2:
+                if self.player_sum == 21 and len(self.player_values) == 2:
+                    self.label.set_text("Both got Blackjack! Nobody wins")
+                else:
+                    self.label.set_text("Dealer got blackjack! You lose!")
                 self.button_play.set_sensitive(True)
                 self.button_hit.set_sensitive(False)
                 self.button_stay.set_sensitive(False)  
@@ -182,8 +194,8 @@ class MyWindow(Gtk.Window):
         else:
             self.player_values.append(cardvalue)
             self.player_sum = sum(self.player_values)  
-            if self.player_sum == 21:
-                self.label.set_text("BLACKJACK! You win!")
+            if self.player_sum == 21 and len(self.player_values) == 2:
+                self.label.set_text("BLACKJACK!")
                 self.button_play.set_sensitive(True)
                 self.button_hit.set_sensitive(False)
                 self.button_stay.set_sensitive(False)                
@@ -248,18 +260,18 @@ class MyWindow(Gtk.Window):
         self.reveal_card(self.hidden_card)
         while self.dealer_sum < 17:
             self.deal_card("dealer", "up")
-        if self.dealer_sum == self.player_sum:
-            self.label.set_text("Nobody wins")
+        if self.dealer_sum == self.player_sum:      # nämä tekstit vain jos ei tullut blackjackia tai bust
+            #self.label.set_text("Nobody wins")
             self.button_play.set_sensitive(True)
             self.button_hit.set_sensitive(False)
             self.button_stay.set_sensitive(False)             
         elif self.dealer_sum > self.player_sum and self.dealer_sum <= 21:
-            self.label.set_text("Dealer wins")
+            #self.label.set_text("Dealer wins")
             self.button_play.set_sensitive(True)
             self.button_hit.set_sensitive(False)
             self.button_stay.set_sensitive(False)   
         elif self.dealer_sum < self.player_sum:
-            self.label.set_text("You win")
+            #self.label.set_text("You win")
             self.button_play.set_sensitive(True)
             self.button_hit.set_sensitive(False)
             self.button_stay.set_sensitive(False)
