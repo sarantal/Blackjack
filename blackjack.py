@@ -6,20 +6,6 @@ from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 
 
-"""
-TODO:
-    uudet funktiot?:
-        deal_card(player/dealer)        random.choice, kortin kuva, lisää kortin arvo listaan
-        update_score(player/dealer)     ässä: 11->1 tarvittaessa
-        reveal_card                     'stay' buttonille, julistaa blackjackin tarvittaessa
-        end_game                        voittajan julistus, buttoneiden aktivointi
-    
-    viive korttien välille?
-
-    vihreä taustaväri, buttoneille joku väri/fontti/läpinäkyvyys?
-"""
-
-
 
 class MyWindow(Gtk.Window):
     def __init__(self):
@@ -33,7 +19,7 @@ class MyWindow(Gtk.Window):
         
         # Box for dealers cards
         self.box_dealer = Gtk.Box(spacing = 20)
-        self.box_dealer.set_orientation(0)    # vertical box = 1, horizontal is default or '0'
+        self.box_dealer.set_orientation(0)
         self.box_dealer.set_margin_start(30)
         self.box_dealer.set_margin_end(30)
         self.box_dealer.set_margin_top(20)
@@ -88,7 +74,7 @@ class MyWindow(Gtk.Window):
         
         #   CARDS
         self.all_cards = Gtk.Image()
-        self.all_cards = GdkPixbuf.Pixbuf.new_from_file("deck.png")        # Pixbuf object
+        self.all_cards = GdkPixbuf.Pixbuf.new_from_file("deck.png")
         
         # Put boxes in main box
         self.box.pack_start(self.box_dealer, True, True, 0)
@@ -238,7 +224,7 @@ class MyWindow(Gtk.Window):
         self.setup()
         
         # TODO
-        #   sleep ei toimi oikein, joku animaatio?
+        #   some other way to implement small delay between dealt cards
         
         self.deal_card("dealer", "up")
         #time.sleep(1)
@@ -251,7 +237,6 @@ class MyWindow(Gtk.Window):
         self.deal_card("player", "up")        
         
         
-        
     def hit_button_clicked(self, widget):
         self.deal_card("player", "up")
         
@@ -260,7 +245,7 @@ class MyWindow(Gtk.Window):
         self.reveal_card(self.hidden_card)
         while self.dealer_sum < 17:
             self.deal_card("dealer", "up")
-        if self.dealer_sum == self.player_sum:      # nämä tekstit vain jos ei tullut blackjackia tai bust
+        if self.dealer_sum == self.player_sum:
             #self.label.set_text("Nobody wins")
             self.button_play.set_sensitive(True)
             self.button_hit.set_sensitive(False)
@@ -279,7 +264,6 @@ class MyWindow(Gtk.Window):
 
     def quit_button_clicked(self, widget):
         Gtk.main_quit()
-        # TODO  popup confirmation?
         
 
 
